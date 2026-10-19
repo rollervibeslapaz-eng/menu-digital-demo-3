@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - Pedidos</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ff6b35">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Poppins', sans-serif; background: #f0f2f5; padding: 1rem; }
+        .header { background: #2c3e50; color: white; padding: 1.5rem; border-radius: 10px; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+        .header h1 { font-size: 1.3rem; }
+        .stats { display: flex; gap: 0.5rem; }
+        .stat-box { background: white; padding: 0.8rem; border-radius: 10px; text-align: center; flex: 1; }
+        .stat-number { font-size: 1.5rem; font-weight: 700; color: #ff6b35; }
+        .stat-label { font-size: 0.8rem; color: #666; }
+        .orders-container { display: grid; gap: 1rem; }
+        .order-card { background: white; padding: 1.2rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-left: 5px solid #25d366; }
+        .order-card.processing { border-left-color: #f39c12; }
+        .order-card.completed { border-left-color: #95a5a6; opacity: 0.7; }
+        .order-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.8rem; }
+        .order-id { font-weight: 700; color: #2c3e50; font-size: 0.9rem; }
+        .order-time { font-size: 0.75rem; color: #666; }
+        .order-customer { font-size: 1rem; font-weight: 600; margin-bottom: 0.3rem; }
+        .order-table { color: #ff6b35; font-weight: 600; margin-bottom: 0.8rem; font-size: 0.9rem; }
+        .order-items { background: #f8f9fa; padding: 0.8rem; border-radius: 8px; margin-bottom: 0.8rem; }
+        .order-item { display: flex; justify-content: space-between; padding: 0.2rem 0; font-size: 0.9rem; }
+        .order-total { font-size: 1.1rem; font-weight: 700; color: #25d366; text-align: right; margin-top: 0.5rem; }
+        .order-notes { background: #fff3cd; padding: 0.6rem; border-radius: 8px; margin-top: 0.8rem; font-size: 0.85rem; }
+        .order-actions { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
+        .btn { padding: 0.5rem 0.8rem; border: none; border-radius: 20px; cursor: pointer; font-weight: 600; font-family: 'Poppins', sans-serif; font-size: 0.85rem; flex: 1; }
+        .btn-process { background: #f39c12; color: white; }
+        .btn-complete { background: #95a5a6; color: white; }
+        .btn-delete { background: #e74c3c; color: white; }
+        .login-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #2c3e50; display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .login-box { background: white; padding: 2rem; border-radius: 15px; text-align: center; width: 90%; max-width: 350px; }
+        .login-box input { padding: 0.8rem; border: 2px solid #ddd; border-radius: 8px; width: 100%; margin: 1rem 0; font-size: 1rem; }
+        .login-box button { background: #25d366; color: white; border: none; padding: 0.8rem 2rem; border-radius: 20px; cursor: pointer; font-weight: 700; font-size: 1rem; width: 100%; }
+        .hidden { display: none !important; }
+        .new-order-animation { animation: slideIn 0.5s ease-out; }
+        @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .install-btn { position: fixed; bottom: 20px; left: 20px; background: #2c3e50; color: white; border: none; padding: 0.8rem 1.2rem; border-radius: 50px; font-weight: 700; cursor: pointer; z-index: 1000; font-family: 'Poppins', sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: none; }
+    </style>
+</head>
+<body>
+    <div class="login-screen" id="login-screen">
+        <div class="login-box">
+            <h2>🔐 Panel de Pedidos</h2>
+            <p style="margin: 1rem 0; color: #666; font-size: 0.9rem;">Ingresa la contraseña</p>
+            <input type="password" id="password-input" placeholder="Contraseña">
+            <button onclick="checkPassword()">Entrar</button>
+            <p id="error-msg" style="color: #e74c3c; margin-top: 1rem; display: none; font-size: 0.9rem;">Contraseña incorrecta</p>
+        </div>
+    </div>
+
+    <div id="admin-panel" class="hidden">
+        <div class="header">
+            <h1>📋 Pedidos en Tiempo Real</h1>
+            <div class="stats">
+                <div class="stat-box"><div class="stat-number" id="new-count">0</div><div class="stat-label">Nuevos</div></div>
+                <div class="stat-box"><div class="stat-number" id="processing-count">0</div><div class="stat-label">En proceso</div></div>
+                <div class="stat-box"><div class="stat-number" id="total-today">$0</div><div class="stat-label">Ventas hoy</div></div>
+            </div>
+        </div>
+        <div class="orders-container" id="orders-container"></div>
+    </div>
+
+    <button class="install-btn" id="install-btn">📱 Instalar App</button>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script>
+        // ⚙️ 1. MISMAS CREDENCIALES DE FIREBASE
+        const firebaseConfig = {
+            apiKey: "PEGA_TU_API_KEY_AQUI",
+            authDomain: "PEGA_TU_AUTH_DOMAIN_AQUI",
+            projectId: "PEGA_TU_PROJECT_ID_AQUI",
+            storageBucket: "PEGA_TU_STORAGE_BUCKET_AQUI",
+            messagingSenderId: "PEGA_TU_MESSAGING_SENDER_ID_AQUI",
+            appId: "PEGA_TU_APP_ID_AQUI"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const ADMIN_PASSWORD = "admin123"; // Cámbiala si quieres
+        let orders = [];
+        let audioContext = null;
+
+        function checkPassword() {
+            if (document.getElementById('password-input').value === ADMIN_PASSWORD) {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                loadOrders();
+            } else {
+                document.getElementById('error-msg').style.display = 'block';
+            }
+        }
+        document.getElementById('password-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') checkPassword(); });
+
+        function loadOrders() {
+            // FILTRO: Solo muestra pedidos de "La Estación Burger"
+            db.collection('pedidos')
+                .where('restaurant', '==', 'La Estación Burger')
+                .orderBy('timestamp', 'desc')
+                .onSnapshot((snapshot) => {
+                    orders = [];
+                    snapshot.forEach((doc) => orders.push({ id: doc.id, ...doc.data() }));
+                    renderOrders();
+                    updateStats();
+                });
+        }
+
+        function renderOrders() {
+            const container = document.getElementById('orders-container');
+            container.innerHTML = '';
+            orders.forEach((order, index) => {
+                const card = document.createElement('div');
+                card.className = `order-card ${order.status} ${index === 0 && order.status === 'nuevo' ? 'new-order-animation' : ''}`;
+                const date = order.timestamp ? order.timestamp.toDate().toLocaleString('es-MX', {hour: '2-digit', minute:'2-digit'}) : 'Ahora';
+                
+                let itemsHTML = '';
+                order.items.forEach(item => {
+                    itemsHTML += `<div class="order-item"><span>${item.quantity}x ${item.name}</span><span>$${item.subtotal}</span></div>`;
+                });
+
+                card.innerHTML = `
+                    <div class="order-header">
+                        <div><div class="order-id">#${order.id.slice(-6).toUpperCase()}</div><div class="order-time">${date}</div></div>
+                        <span style="background: ${order.status === 'nuevo' ? '#25d366' : order.status === 'processing' ? '#f39c12' : '#95a5a6'}; color: white; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">
+                            ${order.status === 'nuevo' ? 'NUEVO' : order.status === 'processing' ? 'EN PROCESO' : 'COMPLETADO'}
+                        </span>
+                    </div>
+                    <div class="order-customer">👤 ${order.customerName}</div>
+                    <div class="order-table">📍 ${order.tableNumber}</div>
+                    <div class="order-items">${itemsHTML}</div>
+                    ${order.notes ? `<div class="order-notes">📝 <strong>Nota:</strong> ${order.notes}</div>` : ''}
+                    <div class="order-total">💰 Total: $${order.total}</div>
+                    <div class="order-actions">
+                        ${order.status === 'nuevo' ? `<button class="btn btn-process" onclick="updateStatus('${order.id}', 'processing')">En proceso</button>` : ''}
+                        ${order.status === 'processing' ? `<button class="btn btn-complete" onclick="updateStatus('${order.id}', 'completed')">Completado</button>` : ''}
+                        <button class="btn btn-delete" onclick="deleteOrder('${order.id}')">Eliminar</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            const newOrders = orders.filter(o => o.status === 'nuevo');
+            if (newOrders.length > 0 && !window.hasPlayedSound) {
+                playNotificationSound();
+                window.hasPlayedSound = true;
+                setTimeout(() => { window.hasPlayedSound = false; }, 5000);
+            }
+        }
+
+        function updateStats() {
+            const newCount = orders.filter(o => o.status === 'nuevo').length;
+            const processingCount = orders.filter(o => o.status === 'processing').length;
+            const today = new Date().toDateString();
+            const todayOrders = orders.filter(o => o.timestamp && o.timestamp.toDate().toDateString() === today);
+            const totalToday = todayOrders.reduce((sum, o) => sum + o.total, 0);
+
+            document.getElementById('new-count').textContent = newCount;
+            document.getElementById('processing-count').textContent = processingCount;
+            document.getElementById('total-today').textContent = `$${totalToday}`;
+        }
+
+        async function updateStatus(orderId, newStatus) {
+            await db.collection('pedidos').doc(orderId).update({ status: newStatus });
+        }
+
+        async function deleteOrder(orderId) {
+            if (confirm('¿Eliminar este pedido?')) await db.collection('pedidos').doc(orderId).delete();
+        }
+
+        function playNotificationSound() {
+            try {
+                if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.value = 800;
+                gainNode.gain.value = 0.3;
+                oscillator.start();
+                setTimeout(() => oscillator.stop(), 200);
+            } catch (e) { console.log('Sonido no disponible'); }
+        }
+
+        // 📱 PWA: Lógica de instalación
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('install-btn').style.display = 'block';
+        });
+
+        document.getElementById('install-btn').addEventListener('click', () => {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    document.getElementById('install-btn').style.display = 'none';
+                }
+                deferredPrompt = null;
+            });
+        });
+    </script>
+</body>
+</html>
