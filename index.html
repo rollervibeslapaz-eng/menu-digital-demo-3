@@ -175,7 +175,7 @@
         }
 
         // 🚀 5. FUNCIÓN DE CHECKOUT CON FIREBASE
-        async function openCheckout() {
+               async function openCheckout() {
             const items = Object.values(cart);
             if (items.length === 0) return;
             
@@ -208,28 +208,18 @@
             };
 
             try {
-                // 1. Guardar en Firebase
+                // 1. Guardar en Firebase (El pedido viaja directo al panel de admin)
                 await db.collection('pedidos').add(order);
                 
-                // 2. Mostrar mensaje de éxito
+                // 2. Mostrar mensaje de éxito en pantalla
                 document.getElementById('success-message').classList.add('show');
                 
-                // 3. Limpiar carrito
+                // 3. Limpiar carrito y actualizar vista
                 cart = {};
                 updateCartBar();
                 renderMenu();
                 
-                // 4. Abrir WhatsApp como respaldo (opcional pero recomendado)
-                let message = `🛒 *NUEVO PEDIDO - ${RESTAURANT_NAME}*\n\n`;
-                message += `👤 Cliente: ${customerName}\n📍 Mesa/Dirección: ${tableNumber}\n\n📋 *Detalle:*\n`;
-                items.forEach(item => {
-                    message += `• ${item.qty}x ${item.name} - $${item.price * item.qty}\n`;
-                });
-                message += `\n💰 *TOTAL: $${total}*\n`;
-                if (notes) message += `\n📝 *Nota:* ${notes}\n`;
-                
-                const encodedMessage = encodeURIComponent(message);
-                window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`, '_blank');
+                // ¡LISTO! Sistema 100% independiente. Sin WhatsApp.
                 
             } catch (error) {
                 alert('Error al enviar el pedido: ' + error.message);
