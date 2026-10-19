@@ -104,7 +104,6 @@
         function loadOrders() {
             // FILTRO: Solo muestra pedidos de "La Estación Burger"
             db.collection('pedidos')
-                .where('restaurant', '==', 'La Estación Burger')
                 .orderBy('timestamp', 'desc')
                 .onSnapshot((snapshot) => {
                     orders = [];
